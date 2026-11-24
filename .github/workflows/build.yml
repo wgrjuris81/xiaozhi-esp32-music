@@ -1,7 +1,17 @@
-name: Build Xiaozhi Firmware
+name: Build Xiaozhi Music LCD
 
 on:
   workflow_dispatch:
+    inputs:
+      placa:
+        description: 'Nome da placa com LCD'
+        required: true
+        default: 'bread-compact-wifi-lcd'
+        type: choice
+        options:
+          - bread-compact-wifi-lcd
+          - waveshare-esp32-s3-touch-lcd-1.54
+          - waveshare-esp32-s3-lcd-1.54
 
 jobs:
   build:
@@ -14,23 +24,20 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build Direct IDF
+      - name: Build Official Release Script
         run: |
           . /opt/esp/idf/export.sh
-          BOARD=$(find main/boards -maxdepth 2 -mindepth 1 | grep -E "waveshare.*1\.54|bread-compact-wifi-lcd" | head -n 1 | sed 's|main/boards/||')
-          echo "Placa selecionada: $BOARD"
-          idf.py set-target esp32s3
-          sed -i 's/CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI=y/# CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI is not set/g' sdkconfig
-          BOARD_MACRO=$(echo "$BOARD" | tr '[:lower:]-/' '[:upper:]__')
-          echo "CONFIG_BOARD_TYPE_${BOARD_MACRO}=y" >> sdkconfig
-          idf.py reconfigure
-          idf.py build
+          pip install -q pyyaml
+          echo "=== Placas disponíveis no repositório ==="
+          find main/boards -maxdepth 2 -mindepth 1
+          echo "=== Compilando: ${{ github.event.inputs.placa }} ==="
+          python scripts/release.py ${{ github.event.inputs.placa }}
           mkdir -p dist
-          (cd build && esptool.py --chip esp32s3 merge_bin -o ../dist/merged-binary.bin @flash_args)
+          find . -name "merged-binary.bin" -o -name "*.zip" | grep -v ".git" | xargs -I {} cp {} dist/
 
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-xiaozhi-music
-          path: dist/*.bin
+          name: firmware-${{ github.event.inputs.placa }}
+          path: dist/*
           if-no-files-found: error
