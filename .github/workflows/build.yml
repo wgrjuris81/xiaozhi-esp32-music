@@ -1,0 +1,24 @@
+name: Build Xiaozhi Firmware
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v5.3.2
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build for Waveshare ESP32-S3-LCD-1.54
+        run: |
+          python scripts/release.py waveshare-esp32-s3-lcd-1.54
+
+      - name: Upload Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-waveshare-1.54
+          path: releases/*.zip
