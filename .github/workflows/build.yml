@@ -1,18 +1,17 @@
-yaml
 name: Build Xiaozhi Music LCD
 
 on:
   workflow_dispatch:
     inputs:
       placa:
-        description: 'Nome da placa com LCD'
+        description: 'Escolha a placa com tela LCD'
         required: true
         default: 'bread-compact-wifi-lcd'
         type: choice
         options:
           - bread-compact-wifi-lcd
-          - waveshare-esp32-s3-touch-lcd-1.54
-          - waveshare-esp32-s3-lcd-1.54
+          - waveshare/esp32-s3-touch-lcd-1.54
+          - waveshare/esp32-s3-lcd-1.54
 
 jobs:
   build:
@@ -25,23 +24,35 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build Official Release Script
+      - name: Build Direct IDF with LCD
         run: |
           set -e
           . /opt/esp/idf/export.sh
-          pip install -q pyyaml
-          echo "=== Placas disponíveis ==="
-          find main/boards -maxdepth 2 -mindepth 1
-          echo "=== Conteúdo de scripts/release.py ==="
-          cat scripts/release.py || true
-          echo "=== Iniciando build para: ${{ github.event.inputs.placa }} ==="
-          python scripts/release.py "${{ github.event.inputs.placa }}"
+          PLACA="${{ github.event.inputs.placa }}"
+          echo "=== Compilando placa: $PLACA ==="
+          
+          idf.py set-target esp32s3
+          
+          # Desativa a placa padrão sem tela e ativa a placa com tela LCD escolhida
+          sed -i 's/CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI=y/# CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI is not set/g' sdkconfig
+          BOARD_MACRO=$(echo "$PLACA" | tr '[:lower:]-/.' '[:upper:]___')
+          echo "CONFIG_BOARD_TYPE_${BOARD_MACRO}=y" >> sdkconfig
+          
+          # Copia configurações específicas da placa se existirem
+          if [ -f "main/boards/${PLACA}/config.json" ]; then
+            cat "main/boards/${PLACA}/config.json"
+          fi
+          
+          idf.py reconfigure
+          idf.py build
+          
           mkdir -p dist
-          find . -maxdepth 3 \( -name "merged-binary.bin" -o -name "*.zip" \) -exec cp {} dist/ \;
+          (cd build && esptool.py --chip esp32s3 merge_bin -o ../dist/merged-binary.bin --fill-flash-size 16MB @flash_args || esptool.py --chip esp32s3 merge_bin -o ../dist/merged-binary.bin @flash_args)
+          ls -lh dist/merged-binary.bin
 
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ github.event.inputs.placa }}
-          path: dist/*
+          name: firmware-xiaozhi-music-lcd
+          path: dist/merged-binary.bin
           if-no-files-found: error
