@@ -20,15 +20,13 @@ jobs:
           BOARD=$(find main/boards -maxdepth 2 -mindepth 1 | grep -E "waveshare.*1\.54|bread-compact-wifi-lcd" | head -n 1 | sed 's|main/boards/||')
           echo "Placa selecionada: $BOARD"
           idf.py set-target esp32s3
+          sed -i 's/CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI=y/# CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI is not set/g' sdkconfig
           BOARD_MACRO=$(echo "$BOARD" | tr '[:lower:]-/' '[:upper:]__')
-          echo "CONFIG_BOARD_TYPE_${BOARD_MACRO}=y" >> sdkconfig.defaults.esp32s3
+          echo "CONFIG_BOARD_TYPE_${BOARD_MACRO}=y" >> sdkconfig
+          idf.py reconfigure
           idf.py build
           mkdir -p dist
-          if [ -f build/merged-binary.bin ]; then
-            cp build/merged-binary.bin dist/
-          else
-            esptool.py --chip esp32s3 merge_bin -o dist/merged-binary.bin @build/flash_args
-          fi
+          (cd build && esptool.py --chip esp32s3 merge_bin -o ../dist/merged-binary.bin @flash_args)
 
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
