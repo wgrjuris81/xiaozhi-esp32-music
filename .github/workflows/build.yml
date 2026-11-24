@@ -16,6 +16,7 @@ jobs:
 
       - name: Build Direct IDF
         run: |
+          . /opt/esp/idf/export.sh
           BOARD=$(find main/boards -maxdepth 2 -mindepth 1 | grep -E "waveshare.*1\.54|bread-compact-wifi-lcd" | head -n 1 | sed 's|main/boards/||')
           echo "Placa selecionada: $BOARD"
           idf.py set-target esp32s3
