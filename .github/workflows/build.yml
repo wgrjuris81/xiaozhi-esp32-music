@@ -1,4 +1,5 @@
 name: Build Xiaozhi Firmware
+
 on:
   workflow_dispatch:
 
@@ -15,8 +16,6 @@ jobs:
 
       - name: Build Direct IDF
         run: |
-          echo "Pastas disponíveis em main/boards:"
-          find main/boards -maxdepth 2 -mindepth 1
           BOARD=$(find main/boards -maxdepth 2 -mindepth 1 | grep -E "waveshare.*1\.54|bread-compact-wifi-lcd" | head -n 1 | sed 's|main/boards/||')
           echo "Placa selecionada: $BOARD"
           idf.py set-target esp32s3
