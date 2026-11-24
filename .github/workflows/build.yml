@@ -1,3 +1,4 @@
+yaml
 name: Build Xiaozhi Music LCD
 
 on:
@@ -26,14 +27,17 @@ jobs:
 
       - name: Build Official Release Script
         run: |
+          set -e
           . /opt/esp/idf/export.sh
           pip install -q pyyaml
-          echo "=== Placas disponíveis no repositório ==="
+          echo "=== Placas disponíveis ==="
           find main/boards -maxdepth 2 -mindepth 1
-          echo "=== Compilando: ${{ github.event.inputs.placa }} ==="
-          python scripts/release.py ${{ github.event.inputs.placa }}
+          echo "=== Conteúdo de scripts/release.py ==="
+          cat scripts/release.py || true
+          echo "=== Iniciando build para: ${{ github.event.inputs.placa }} ==="
+          python scripts/release.py "${{ github.event.inputs.placa }}"
           mkdir -p dist
-          find . -name "merged-binary.bin" -o -name "*.zip" | grep -v ".git" | xargs -I {} cp {} dist/
+          find . -maxdepth 3 \( -name "merged-binary.bin" -o -name "*.zip" \) -exec cp {} dist/ \;
 
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
