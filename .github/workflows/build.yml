@@ -13,14 +13,22 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build Firmware
+      - name: Build Direct IDF
         run: |
-          BOARD=$(ls main/boards | grep -E "waveshare.*1\.54|bread-compact-wifi-lcd" | head -n 1)
-          echo "Compilando placa: $BOARD"
-          python scripts/release.py "$BOARD"
+          echo "Pastas disponíveis em main/boards:"
+          find main/boards -maxdepth 2 -mindepth 1
+          BOARD=$(find main/boards -maxdepth 2 -mindepth 1 | grep -E "waveshare.*1\.54|bread-compact-wifi-lcd" | head -n 1 | sed 's|main/boards/||')
+          echo "Placa selecionada: $BOARD"
+          idf.py set-target esp32s3
+          BOARD_MACRO=$(echo "$BOARD" | tr '[:lower:]-/' '[:upper:]__')
+          echo "CONFIG_BOARD_TYPE_${BOARD_MACRO}=y" >> sdkconfig.defaults.esp32s3
+          idf.py build
+          mkdir -p dist
+          cp build/merged-binary.bin dist/ || cp build/xiaozhi.bin dist/
 
       - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware-xiaozhi-music
-          path: "**/*.zip"
+          path: dist/*.bin
+          if-no-files-found: error
